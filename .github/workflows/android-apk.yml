@@ -1,0 +1,72 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/android-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PICOVOICE_ACCESS_KEY: ${{ secrets.PICOVOICE_ACCESS_KEY }}
+      HEY_TEDDY_PPN_BASE64: ${{ secrets.HEY_TEDDY_PPN_BASE64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Decode Porcupine model from secret (optional)
+        if: env.HEY_TEDDY_PPN_BASE64 != ''
+        run: |
+          mkdir -p assets/wake
+          echo "$HEY_TEDDY_PPN_BASE64" | base64 -d > assets/wake/hey_teddy.ppn
+
+      - name: Ensure Porcupine model exists
+        run: |
+          if [ ! -f assets/wake/hey_teddy.ppn ]; then
+            echo "Missing assets/wake/hey_teddy.ppn. Commit the file or set HEY_TEDDY_PPN_BASE64 secret." >&2
+            exit 1
+          fi
+
+      - name: Build APK (debug)
+        run: |
+          flutter build apk --debug \
+            --dart-define=OPENAI_API_KEY="$OPENAI_API_KEY" \
+            --dart-define=PICOVOICE_ACCESS_KEY="$PICOVOICE_ACCESS_KEY" \
+            --dart-define=OPENAI_MODEL=gpt-3.5-turbo
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: teddy-talks-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error

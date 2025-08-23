@@ -1,0 +1,46 @@
+name: Android Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Create .env defines file
+        run: |
+          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}>> defines.txt
+          echo PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}>> defines.txt
+          echo OPENAI_MODEL=gpt-3.5-turbo>> defines.txt
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release ^
+            --dart-define=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} ^
+            --dart-define=PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }} ^
+            --dart-define=OPENAI_MODEL=gpt-3.5-turbo
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: teddy_talks-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
