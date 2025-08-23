@@ -87,3 +87,8 @@ jobs:
         with:
           name: flutter-build-log
           path: build_log.txt
+      - name: Print last 200 lines of build log (on failure)
+        if: failure()
+        run: |
+          echo "===== Tail of flutter build log ====="
+          tail -n 200 build_log.txt || true
