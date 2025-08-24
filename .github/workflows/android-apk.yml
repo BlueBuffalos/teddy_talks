@@ -72,7 +72,7 @@ jobs:
         run: |
           set -o pipefail
           echo "Running flutter build apk with defines"
-          flutter build apk --debug -v --dart-define=OPENAI_API_KEY="${OPENAI_API_KEY}" --dart-define=PICOVOICE_ACCESS_KEY="${PICOVOICE_ACCESS_KEY}" --dart-define=OPENAI_MODEL="gpt-3.5-turbo" | tee build_log.txt
+          flutter build apk --debug -v -t lib/main.dart --dart-define=OPENAI_API_KEY="${OPENAI_API_KEY}" --dart-define=PICOVOICE_ACCESS_KEY="${PICOVOICE_ACCESS_KEY}" --dart-define=OPENAI_MODEL="gpt-3.5-turbo" | tee build_log.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
