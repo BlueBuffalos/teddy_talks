@@ -69,12 +69,12 @@ jobs:
           file assets/wake/hey_teddy.ppn || true
 
       - name: Build APK (debug, verbose)
-        run: |
-          set -o pipefail
-          flutter build apk -v --debug \
-            --dart-define=OPENAI_API_KEY="$OPENAI_API_KEY" \
-            --dart-define=PICOVOICE_ACCESS_KEY="$PICOVOICE_ACCESS_KEY" \
-            --dart-define=OPENAI_MODEL=gpt-3.5-turbo | tee build_log.txt
+        run: >-
+          bash -eo pipefail -c
+          "flutter build apk --debug -v
+          --dart-define=OPENAI_API_KEY='${OPENAI_API_KEY}'
+          --dart-define=PICOVOICE_ACCESS_KEY='${PICOVOICE_ACCESS_KEY}'
+          --dart-define=OPENAI_MODEL='gpt-3.5-turbo' | tee build_log.txt"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
