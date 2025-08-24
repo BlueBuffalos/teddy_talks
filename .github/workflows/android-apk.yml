@@ -26,6 +26,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -33,7 +34,7 @@ jobs:
       - name: Install Android SDK components
         run: |
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "cmdline-tools;latest" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -50,6 +51,7 @@ jobs:
           echo "FLUTTER:" && flutter --version
           echo "ANDROID SDK DIR: $ANDROID_SDK_ROOT"
           echo "SDK packages (head):" && sdkmanager --list | head -n 50 || true
+          echo "DOCTOR:" && flutter doctor -v || true
 
       - name: Decode Porcupine model from secret (optional)
         if: env.HEY_TEDDY_PPN_BASE64 != ''
