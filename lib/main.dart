@@ -9,10 +9,10 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'openai_service.dart';
 import 'prompt_styles.dart';
 
-// Compile-time defines passed via --dart-define
-const _openAiKey = String.fromEnvironment('OPENAI_API_KEY');
-const _pvKey     = String.fromEnvironment('PICOVOICE_ACCESS_KEY');
-const _modelId   = String.fromEnvironment('OPENAI_MODEL', defaultValue: 'gpt-3.5-turbo');
+// Compile-time defines passed via --dart-define (defaults keep types non-null)
+const String _openAiKey = String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
+const String _pvKey     = String.fromEnvironment('PICOVOICE_ACCESS_KEY', defaultValue: '');
+const String _modelId   = String.fromEnvironment('OPENAI_MODEL', defaultValue: 'gpt-3.5-turbo');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

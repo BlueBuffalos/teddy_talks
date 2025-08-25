@@ -45,6 +45,11 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Flutter analyze (non-blocking)
+        run: |
+          set -o pipefail
+          flutter analyze | tee analyze_log.txt || true
+
       - name: Environment sanity (versions)
         run: |
           echo "JAVA:" && java -version
@@ -52,6 +57,9 @@ jobs:
           echo "ANDROID SDK DIR: $ANDROID_SDK_ROOT"
           echo "SDK packages (head):" && sdkmanager --list | head -n 50 || true
           echo "DOCTOR:" && flutter doctor -v || true
+          echo "Secret presence (lengths only):"
+          echo "  OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+          echo "  PICOVOICE_ACCESS_KEY length: ${#PICOVOICE_ACCESS_KEY}"
 
       - name: Decode Porcupine model from secret (optional)
         if: env.HEY_TEDDY_PPN_BASE64 != ''
@@ -87,8 +95,18 @@ jobs:
         with:
           name: flutter-build-log
           path: build_log.txt
+      - name: Upload analyze log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-analyze-log
+          path: analyze_log.txt
       - name: Print last 200 lines of build log (on failure)
         if: failure()
         run: |
           echo "===== Tail of flutter build log ====="
           tail -n 200 build_log.txt || true
+          echo "===== Head of flutter build log ====="
+          head -n 200 build_log.txt || true
+          echo "===== Likely error lines (grep) ====="
+          grep -n -E "(Error:|error:|^lib/.*:\d+:|^/home/runner/work/.+\.dart:\d+:)" build_log.txt | tail -n 200 || true
