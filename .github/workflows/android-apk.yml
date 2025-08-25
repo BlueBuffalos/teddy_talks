@@ -25,11 +25,13 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
           cache: 'gradle'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        env:
+          SKIP_JDK_VERSION_CHECK: true
 
       - name: Install Android SDK components
         run: |
@@ -80,43 +82,41 @@ jobs:
         run: |
           set -o pipefail
           echo "Running flutter build apk with defines"
-          flutter build apk --debug -v -t lib/main.dart --dart-define=OPENAI_API_KEY="${OPENAI_API_KEY}" --dart-define=PICOVOICE_ACCESS_KEY="${PICOVOICE_ACCESS_KEY}" --dart-define=OPENAI_MODEL="gpt-3.5-turbo" | tee build_log.txt
+          flutter build apk --debug -v -t lib/main.dart \
+            --dart-define=OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            --dart-define=PICOVOICE_ACCESS_KEY="${PICOVOICE_ACCESS_KEY}" \
+            --dart-define=OPENAI_MODEL="gpt-3.5-turbo" 2>&1 | tee build_log.txt
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: teddy-talks-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
-      - name: Upload build log (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-build-log
-          path: build_log.txt
-      - name: Upload analyze log (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-analyze-log
-          path: analyze_log.txt
-      - name: Gradle full stacktrace (on failure)
+      - name: Gradle stacktrace on failure (fallback)
         if: failure()
         run: |
-          set -o pipefail
-          echo "===== Gradle version ====="
-          cd android
-          ./gradlew -v || true
-          echo "===== Running app:assembleDebug with --stacktrace ====="
-          ./gradlew app:assembleDebug --stacktrace --warning-mode all -x lint | tee ../gradle_stacktrace.txt || true
-          cd ..
-      - name: Upload gradle stacktrace log (always)
+          echo "===== Running Gradle directly with --stacktrace --info ====="
+          (cd android && ./gradlew app:assembleDebug --stacktrace --info --warning-mode all) 2>&1 | tee gradle_stacktrace.log || true
+
+      - name: Upload gradle stacktrace (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-stacktrace-log
-          path: gradle_stacktrace.txt
+          path: gradle_stacktrace.log
+
+      - name: Upload Flutter logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-logs
+          path: |
+            build_log.txt
+            analyze_log.txt
+
       - name: Print last 200 lines of build log (on failure)
         if: failure()
         run: |
@@ -125,4 +125,4 @@ jobs:
           echo "===== Head of flutter build log ====="
           head -n 200 build_log.txt || true
           echo "===== Likely error lines (grep) ====="
-          grep -n -E "(Error:|error:|^lib/.*:\d+:|^/home/runner/work/.+\.dart:\d+:)" build_log.txt | tail -n 200 || true
+          grep -n -E "(Error:|error:|^lib/.+:\d+:|^/.+\.dart:\d+:)" build_log.txt | tail -n 200 || true
