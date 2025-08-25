@@ -101,6 +101,22 @@ jobs:
         with:
           name: flutter-analyze-log
           path: analyze_log.txt
+      - name: Gradle full stacktrace (on failure)
+        if: failure()
+        run: |
+          set -o pipefail
+          echo "===== Gradle version ====="
+          cd android
+          ./gradlew -v || true
+          echo "===== Running app:assembleDebug with --stacktrace ====="
+          ./gradlew app:assembleDebug --stacktrace --warning-mode all -x lint | tee ../gradle_stacktrace.txt || true
+          cd ..
+      - name: Upload gradle stacktrace log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-stacktrace-log
+          path: gradle_stacktrace.txt
       - name: Print last 200 lines of build log (on failure)
         if: failure()
         run: |
