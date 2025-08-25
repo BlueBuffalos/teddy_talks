@@ -93,15 +93,15 @@ class _TeddyHomeState extends State<TeddyHome> {
     try {
       final porcupine = await Porcupine.create(
         accessKey: _pvKey,
-        keywords: [], // using custom keyword file instead of built-ins
+        // Use a custom keyword file; do not pass built-in keywords concurrently
         keywordPaths: ["assets/wake/hey_teddy.ppn"],
         sensitivities: [0.6],
       );
 
+      // Create the manager with the minimal, widely-compatible signature
       _ppnMgr = await PorcupineManager.create(
         porcupine,
         _onWakeWord,
-        errorCallback: (e) => _pushLog("Porcupine error: $e"),
       );
       await _ppnMgr!.start();
       _pushLog("Wake word armed. Say 'Hey Teddy'.");
