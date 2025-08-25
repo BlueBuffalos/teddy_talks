@@ -47,6 +47,10 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Ensure Gradle wrapper is executable (Linux)
+        run: |
+          chmod +x android/gradlew || true
+
       - name: Flutter analyze (non-blocking)
         run: |
           set -o pipefail
@@ -99,7 +103,7 @@ jobs:
         if: failure()
         run: |
           echo "===== Running Gradle directly with --stacktrace --info ====="
-          (cd android && ./gradlew app:assembleDebug --stacktrace --info --warning-mode all) 2>&1 | tee gradle_stacktrace.log || true
+          (cd android && chmod +x gradlew && ./gradlew app:assembleDebug --stacktrace --info --warning-mode all) 2>&1 | tee gradle_stacktrace.log || true
 
       - name: Upload gradle stacktrace (always)
         if: always()
