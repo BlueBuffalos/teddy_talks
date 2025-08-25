@@ -51,6 +51,20 @@ jobs:
         run: |
           chmod +x android/gradlew || true
 
+      - name: Write android/local.properties
+        run: |
+          FLUTTER_BIN=$(which flutter)
+          FLUTTER_ROOT=$(dirname "$(dirname "${FLUTTER_BIN}")")
+          echo "flutter bin: $FLUTTER_BIN"
+          echo "flutter root: $FLUTTER_ROOT"
+          echo "android sdk: $ANDROID_SDK_ROOT"
+          cat > android/local.properties <<EOF
+          flutter.sdk=$FLUTTER_ROOT
+          sdk.dir=$ANDROID_SDK_ROOT
+          EOF
+          echo "--- android/local.properties ---"
+          cat android/local.properties
+
       - name: Flutter analyze (non-blocking)
         run: |
           set -o pipefail
@@ -104,6 +118,10 @@ jobs:
         run: |
           echo "===== Running Gradle directly with --stacktrace --info ====="
           (cd android && chmod +x gradlew && ./gradlew app:assembleDebug --stacktrace --info --warning-mode all) 2>&1 | tee gradle_stacktrace.log || true
+          echo "===== android dir list ====="
+          ls -la android || true
+          echo "===== show local.properties ====="
+          cat android/local.properties || true
 
       - name: Upload gradle stacktrace (always)
         if: always()
@@ -121,12 +139,18 @@ jobs:
             build_log.txt
             analyze_log.txt
 
+      - name: Print gradle stacktrace (on failure)
+        if: failure()
+        run: |
+          echo "===== Head gradle_stacktrace.log =====" && head -n 200 gradle_stacktrace.log || true
+          echo "===== Tail gradle_stacktrace.log =====" && tail -n 200 gradle_stacktrace.log || true
+
       - name: Print last 200 lines of build log (on failure)
         if: failure()
         run: |
           echo "===== Tail of flutter build log ====="
-          tail -n 200 build_log.txt || true
+          tail -n 400 build_log.txt || true
           echo "===== Head of flutter build log ====="
-          head -n 200 build_log.txt || true
+          head -n 400 build_log.txt || true
           echo "===== Likely error lines (grep) ====="
-          grep -n -E "(Error:|error:|^lib/.+:\d+:|^/.+\.dart:\d+:)" build_log.txt | tail -n 200 || true
+          grep -n -E "(FAILURE:|\* What went wrong:|A problem occurred|Caused by:|Exception:|Error:|error:|^lib/.+:\d+:|^/.+\.dart:\d+:)" build_log.txt | tail -n 400 || true
