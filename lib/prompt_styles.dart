@@ -1,3 +1,4 @@
+// CI: no-op change to trigger workflow on push
 class PromptStyles {
   static const systemBase = """
 You are 'Teddy', a British-accented companion with wit and empathy.
