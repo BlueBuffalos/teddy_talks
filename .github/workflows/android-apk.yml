@@ -12,6 +12,10 @@ on:
 
 jobs:
   build:
+    timeout-minutes: 30
+    concurrency:
+      group: build-android-apk-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
