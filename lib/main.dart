@@ -91,17 +91,12 @@ class _TeddyHomeState extends State<TeddyHome> {
 
   Future<void> _startWakeWord() async {
     try {
-      final porcupine = await Porcupine.create(
-        accessKey: _pvKey,
-        // Use a custom keyword file; do not pass built-in keywords concurrently
-        keywordPaths: ["assets/wake/hey_teddy.ppn"],
-        sensitivities: [0.6],
-      );
-
-      // Create the manager with the minimal, widely-compatible signature
-      _ppnMgr = await PorcupineManager.create(
-        porcupine,
+      // porcupine_flutter 3.x uses the Manager helpers to construct from keyword paths
+      _ppnMgr = await PorcupineManager.fromKeywordPaths(
+        _pvKey,
+        ["assets/wake/hey_teddy.ppn"],
         _onWakeWord,
+        sensitivities: [0.6],
       );
       await _ppnMgr!.start();
       _pushLog("Wake word armed. Say 'Hey Teddy'.");
