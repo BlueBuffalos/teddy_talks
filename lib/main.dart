@@ -1156,6 +1156,10 @@ class _TeddyHomeState extends State<TeddyHome> {
   }
 
   Future<bool> _maybeHandleCommand(String raw) async {
+    final t = raw.trim();
+    if (t.isEmpty) return false;
+    final l = t.toLowerCase();
+
     // Switch to male/female voice quickly
     if (RegExp(r"\b(use|switch to|select) (a )?male voice\b", caseSensitive: false).hasMatch(l)) {
       await _loadVoices(preferMale: true);
@@ -1184,9 +1188,6 @@ class _TeddyHomeState extends State<TeddyHome> {
       await _speak('Female voice selected.');
       return true;
     }
-    final t = raw.trim();
-    if (t.isEmpty) return false;
-    final l = t.toLowerCase();
 
     // If currently paused: allow only resume or sleep; ignore everything else (give hint if addressed)
     if (isPaused) {
