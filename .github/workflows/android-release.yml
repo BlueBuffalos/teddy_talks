@@ -18,6 +18,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        shell: cmd
+        run: |
+          echo y | sdkmanager --licenses
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -30,14 +38,12 @@ jobs:
         run: |
           echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}>> defines.txt
           echo PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }}>> defines.txt
-          echo OPENAI_MODEL=gpt-3.5-turbo>> defines.txt
+          echo OPENAI_MODEL=gpt-4o-mini>> defines.txt
 
       - name: Build release APK
+        shell: cmd
         run: |
-          flutter build apk --release ^
-            --dart-define=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} ^
-            --dart-define=PICOVOICE_ACCESS_KEY=${{ secrets.PICOVOICE_ACCESS_KEY }} ^
-            --dart-define=OPENAI_MODEL=gpt-3.5-turbo
+          flutter build apk --release --dart-define=OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" --dart-define=PICOVOICE_ACCESS_KEY="${{ secrets.PICOVOICE_ACCESS_KEY }}" --dart-define=OPENAI_MODEL="gpt-4o-mini"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

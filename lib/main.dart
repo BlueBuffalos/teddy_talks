@@ -276,21 +276,8 @@ class _TeddyHomeState extends State<TeddyHome> {
 
     // TTS config
     await tts.setLanguage("en-GB");
-    // Prefer Google TTS on Android to get the widest voice set (incl. male voices)
-    if (_isMobile && Platform.isAndroid) {
-      try {
-        final engines = await tts.getEngines as List?; // may be null on some platforms
-        final google = engines?.map((e) => e.toString()).firstWhere(
-              (e) => e.contains('com.google.android.tts'),
-              orElse: () => '',
-            ) ?? '';
-        if (google.isNotEmpty) {
-          await tts.setEngine('com.google.android.tts');
-        }
-      } catch (_) {}
-    }
-    await _applyTtsSettings();
-    await _loadVoices(preferMale: true); // default to a male EN-GB voice when present
+  await _applyTtsSettings();
+  await _loadVoices();
 
     // STT init: only attempt on mobile; on desktop we fall back to typing
     if (_isMobile) {
@@ -565,9 +552,9 @@ class _TeddyHomeState extends State<TeddyHome> {
         title: const Text("Teddy Talks"),
         actions: [
           IconButton(
-            tooltip: 'Voice settings',
-            icon: const Icon(Icons.settings_voice_outlined),
-            onPressed: _openVoiceSettingsSheet,
+            tooltip: 'TTS settings',
+            icon: const Icon(Icons.graphic_eq),
+            onPressed: _showTtsSettingsSheet,
           ),
         ],
       ),
@@ -774,144 +761,82 @@ class _TeddyHomeState extends State<TeddyHome> {
     );
   }
 
-  // Bottom sheet for voice selection and TTS tuning (Android-friendly UI)
-  Future<void> _openVoiceSettingsSheet() async {
+  Future<void> _showTtsSettingsSheet() async {
+    final p = await SharedPreferences.getInstance();
+    if (!mounted) return;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) {
-        String? localVoice = _selectedVoiceName;
-        double localRate = _rate;
-        double localPitch = _pitch;
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            Future<void> persist() async {
-              final p = await SharedPreferences.getInstance();
-              await p.setString('ttsVoiceName', _selectedVoiceName ?? '');
-              await p.setString('ttsVoiceLocale', _selectedVoiceLocale ?? '');
-              await p.setDouble('ttsRate', _rate);
-              await p.setDouble('ttsPitch', _pitch);
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 12,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Voice', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedVoiceName,
+                hint: const Text('Select voice'),
+                items: _voices
+                    .map((v) => DropdownMenuItem<String>(
+                          value: v['name'],
+                          child: Text("${v['name']} (${v['locale']})"),
+                        ))
+                    .toList(),
+                onChanged: (name) async {
+                  final v = _voices.firstWhere(
+                    (e) => e['name'] == name,
+                    orElse: () => {},
+                  );
+                  setState(() {
+                    _selectedVoiceName = v['name'];
+                    _selectedVoiceLocale = v['locale'];
+                  });
+                  await _applyTtsSettings();
+                  await p.setString('ttsVoiceName', _selectedVoiceName ?? '');
+                  await p.setString('ttsVoiceLocale', _selectedVoiceLocale ?? '');
+                },
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Voice settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(ctx).pop(),
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButton<String>(
-                    isExpanded: true,
-                    value: localVoice,
-                    hint: const Text('Select voice'),
-                    items: _voices
-                        .map((v) => DropdownMenuItem<String>(
-                              value: v['name'],
-                              child: Text("${v['name']} (${v['locale']})"),
-                            ))
-                        .toList(),
-                    onChanged: (name) async {
-                      final v = _voices.firstWhere((e) => e['name'] == name, orElse: () => {});
-                      setModalState(() => localVoice = v['name']);
-                      setState(() {
-                        _selectedVoiceName = v['name'];
-                        _selectedVoiceLocale = v['locale'];
-                      });
-                      await _applyTtsSettings();
-                      await persist();
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      OutlinedButton(
-                        onPressed: () async {
-                          await _loadVoices(preferMale: true);
-                          setModalState(() => localVoice = _selectedVoiceName);
-                          await _applyTtsSettings();
-                          await persist();
-                          await _speak('Male voice selected.');
-                        },
-                        child: const Text('Male'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: () async {
-                          await _loadVoices(preferMale: false);
-                          setModalState(() => localVoice = _selectedVoiceName);
-                          await _applyTtsSettings();
-                          await persist();
-                          await _speak('Female voice selected.');
-                        },
-                        child: const Text('Female'),
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () async { await _speak('Ready when you are.'); },
-                        icon: const Icon(Icons.volume_up_outlined),
-                        label: const Text('Preview'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text('Rate'),
-                      Expanded(
-                        child: Slider(
-                          value: localRate,
-                          onChanged: (v) async {
-                            setModalState(() => localRate = v);
-                            setState(() => _rate = v);
-                            await _applyTtsSettings();
-                            await persist();
-                          },
-                          min: 0.5,
-                          max: 1.2,
-                        ),
-                      ),
-                      SizedBox(width: 8, child: Text(localRate.toStringAsFixed(2), textAlign: TextAlign.right)),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Text('Pitch'),
-                      Expanded(
-                        child: Slider(
-                          value: localPitch,
-                          onChanged: (v) async {
-                            setModalState(() => localPitch = v);
-                            setState(() => _pitch = v);
-                            await _applyTtsSettings();
-                            await persist();
-                          },
-                          min: 0.6,
-                          max: 1.4,
-                        ),
-                      ),
-                      SizedBox(width: 8, child: Text(localPitch.toStringAsFixed(2), textAlign: TextAlign.right)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
+              const SizedBox(height: 12),
+              const Text('Rate', style: TextStyle(fontWeight: FontWeight.bold)),
+              Slider(
+                value: _rate,
+                onChanged: (v) async {
+                  setState(() => _rate = v);
+                  await _applyTtsSettings();
+                  await p.setDouble('ttsRate', _rate);
+                },
+                min: 0.5,
+                max: 1.2,
               ),
-            );
-          },
+              const Text('Pitch', style: TextStyle(fontWeight: FontWeight.bold)),
+              Slider(
+                value: _pitch,
+                onChanged: (v) async {
+                  setState(() => _pitch = v);
+                  await _applyTtsSettings();
+                  await p.setDouble('ttsPitch', _pitch);
+                },
+                min: 0.6,
+                max: 1.4,
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).maybePop(),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -948,7 +873,7 @@ class _TeddyHomeState extends State<TeddyHome> {
     }
   }
 
-  Future<void> _loadVoices({bool preferMale = false}) async {
+  Future<void> _loadVoices() async {
     try {
       final raw = await tts.getVoices; // dynamic per platform
       List<dynamic> list;
@@ -966,9 +891,7 @@ class _TeddyHomeState extends State<TeddyHome> {
             if (v is Map) {
               final name = (v['name'] ?? '').toString();
               final locale = (v['locale'] ?? '').toString();
-              final gender = (v['gender'] ?? '').toString();
-              final engine = (v['engine'] ?? '').toString();
-              return {'name': name, 'locale': locale, 'gender': gender, 'engine': engine};
+              return {'name': name, 'locale': locale};
             }
             return {'name': v.toString(), 'locale': ''};
           })
@@ -983,42 +906,11 @@ class _TeddyHomeState extends State<TeddyHome> {
           orElse: () => {},
         );
       }
-      // Helper to check gender hints in voice metadata/name
-      bool _isMale(Map<String, String> v) {
-        final g = (v['gender'] ?? '').toLowerCase();
-        final n = (v['name'] ?? '').toLowerCase();
-        return g == 'male' || n.contains('#male') || RegExp(r'\bmale\b').hasMatch(n);
-      }
       if (preferred.isEmpty) {
-        // Prefer EN-GB male if asked, else EN-GB any
-        if (preferMale) {
-          preferred = _voices.firstWhere(
-            (v) => (v['locale'] ?? '').toLowerCase().startsWith('en_gb') && _isMale(v),
-            orElse: () => {},
-          );
-        }
-        if (preferred.isEmpty) {
-          preferred = _voices.firstWhere(
-            (v) => (v['locale'] ?? '').toLowerCase().startsWith('en_gb'),
-            orElse: () => {},
-          );
-        }
-        // Fallbacks: any EN male, else any male, else first voice
-        if (preferred.isEmpty && preferMale) {
-          preferred = _voices.firstWhere(
-            (v) => (v['locale'] ?? '').toLowerCase().startsWith('en') && _isMale(v),
-            orElse: () => {},
-          );
-        }
-        if (preferred.isEmpty && preferMale) {
-          preferred = _voices.firstWhere(
-            (v) => _isMale(v),
-            orElse: () => {},
-          );
-        }
-        if (preferred.isEmpty) {
-          preferred = _voices.isNotEmpty ? _voices.first : {};
-        }
+        preferred = _voices.firstWhere(
+          (v) => (v['locale'] ?? '').toLowerCase().startsWith('en_gb'),
+          orElse: () => _voices.isNotEmpty ? _voices.first : {},
+        );
       }
       if (preferred.isNotEmpty) {
         _selectedVoiceName = preferred['name'];
@@ -1156,34 +1048,6 @@ class _TeddyHomeState extends State<TeddyHome> {
   }
 
   Future<bool> _maybeHandleCommand(String raw) async {
-    // Switch to male/female voice quickly
-    if (RegExp(r"\b(use|switch to|select) (a )?male voice\b", caseSensitive: false).hasMatch(l)) {
-      await _loadVoices(preferMale: true);
-      final p = await SharedPreferences.getInstance();
-      await p.setString('ttsVoiceName', _selectedVoiceName ?? '');
-      await p.setString('ttsVoiceLocale', _selectedVoiceLocale ?? '');
-      await _speak('Male voice selected.');
-      return true;
-    }
-    if (RegExp(r"\b(use|switch to|select) (a )?female voice\b", caseSensitive: false).hasMatch(l)) {
-      await _loadVoices(preferMale: false);
-      // If a female voice exists, try to pick it
-      final female = _voices.firstWhere(
-        (v) => (v['gender'] ?? '').toLowerCase() == 'female' ||
-                (v['name'] ?? '').toLowerCase().contains('female'),
-        orElse: () => _voices.isNotEmpty ? _voices.first : {},
-      );
-      if (female.isNotEmpty) {
-        _selectedVoiceName = female['name'];
-        _selectedVoiceLocale = female['locale'];
-        await _applyTtsSettings();
-      }
-      final p = await SharedPreferences.getInstance();
-      await p.setString('ttsVoiceName', _selectedVoiceName ?? '');
-      await p.setString('ttsVoiceLocale', _selectedVoiceLocale ?? '');
-      await _speak('Female voice selected.');
-      return true;
-    }
     final t = raw.trim();
     if (t.isEmpty) return false;
     final l = t.toLowerCase();

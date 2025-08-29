@@ -22,6 +22,12 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses
 
+      - name: Install Android SDK 36 components
+        run: |
+          sdkmanager "cmdline-tools;latest" "platform-tools"
+          (sdkmanager "platforms;android-36" || sdkmanager "platforms;android-35")
+          (sdkmanager "build-tools;36.0.0" || sdkmanager "build-tools;35.0.0")
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,6 +35,17 @@ jobs:
 
       - name: Flutter pub get
         run: flutter pub get
+
+      - name: Diagnostics - verify lib and Gradle config
+        run: |
+          echo "lib directory:" && ls -la lib || true
+          echo "Expect files: main.dart, memory_store.dart, email_service.dart"
+          test -f lib/main.dart && echo "OK: main.dart present" || (echo "MISSING: lib/main.dart" && exit 1)
+          test -f lib/memory_store.dart && echo "OK: memory_store.dart present" || (echo "MISSING: lib/memory_store.dart" && exit 1)
+          test -f lib/email_service.dart && echo "OK: email_service.dart present" || (echo "MISSING: lib/email_service.dart" && exit 1)
+          echo "compileSdk in app/build.gradle:" && grep -n "compileSdk\s*=\s*" android/app/build.gradle || true
+          echo "targetSdk in app/build.gradle:" && grep -n "targetSdk\s*=\s*" android/app/build.gradle || true
+          echo "Kotlin plugin version:" && grep -n "org.jetbrains.kotlin.android" android/settings.gradle || true
 
       - name: Build Debug APK
         env:

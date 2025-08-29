@@ -2,10 +2,28 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- Foreground service permissions to keep mic capture running on Android 10+ / 14+ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <application
         android:label="teddy_talks"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- ForegroundService declaration for background wake word listening -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|dataSync" />
+
+        <!-- Optional: restart tasks on boot if user opts in (we'll start only when toggled) -->
+        <receiver android:name="com.pravera.flutter_foreground_task.FlutterForegroundTaskBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"

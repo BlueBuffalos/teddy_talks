@@ -1,0 +1,5 @@
+SMTP_HOST=set /p SMTP_PORT=SMTP port [587] (current %SMTP_PORT%): 
+SMTP_PORT=587
+SMTP_USER=set /p SMTP_PASS=SMTP password or app password (input hidden not supported) [%SMTP_PASS%]: 
+SMTP_PASS=%SMTP_PASS%
+SMTP_ENCRYPTION=if "%SMTP_ENCRYPTION%"=="" set SMTP_ENCRYPTION=starttls

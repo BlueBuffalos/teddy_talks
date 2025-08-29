@@ -31,6 +31,10 @@ migrate_working_dir/
 .pub/
 /build/
 
+# Local helper scripts (do not commit secrets)
+run_local_windows.bat
+smtp_env.txt
+
 # Symbolication related
 app.*.symbols
 
@@ -41,3 +45,4 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+openai_key.txt
